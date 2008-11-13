@@ -1,3 +1,5 @@
+$:.unshift(File.dirname(__FILE__) + '/../lib')
+
 # ---------------------------------------------------------------------------
 # This is a recipe definition file for Capistrano. The tasks are documented
 # below.
@@ -37,10 +39,11 @@ namespace :externals do
   DESC
   task :setup, :except => { :no_release => true } do
     require 'capistrano/recipes/deploy/scm'
+    require 'local_scm'
 
     external_modules.each do |path, options|
       puts "configuring #{path}"
-      scm = Capistrano::Deploy::SCM.new(options[:type], options)
+      scm = options[:type].to_s == 'local' ? LocalSCM.new(options) : Capistrano::Deploy::SCM.new(options[:type], options)
       revision = scm.query_revision(options[:revision]) { |cmd| `#{cmd}` }
 
       if exists?(:stage) && stage == :local
@@ -58,7 +61,10 @@ namespace :externals do
       else
         shared = File.join(shared_path, "externals", path)
         destination = File.join(shared, revision)
-        run "rm -rf #{latest_release}/#{path} && mkdir -p #{shared} && if [ ! -d #{destination} ]; then (#{scm.checkout(revision, destination)}) || rm -rf #{destination}; fi && ln -nsf #{destination} #{latest_release}/#{path}"
+        
+        run "rm -rf #{latest_release}/#{path} && mkdir -p #{shared}"
+        scm.perform_remote_checkout(self, revision, destination)
+        run "ln -nsf #{destination} #{latest_release}/#{path}"
       end
     end
   end
