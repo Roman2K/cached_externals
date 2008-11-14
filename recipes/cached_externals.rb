@@ -42,7 +42,7 @@ namespace :externals do
     require 'local_scm'
 
     external_modules.each do |path, options|
-      puts "configuring #{path}"
+      logger.info "configuring #{path}"
       scm = options[:type].to_s == 'local' ? LocalSCM.new(options) : Capistrano::Deploy::SCM.new(options[:type], options)
       revision = scm.query_revision(options[:revision]) { |cmd| `#{cmd}` }
 
