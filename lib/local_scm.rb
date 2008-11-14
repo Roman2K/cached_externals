@@ -17,11 +17,9 @@ class LocalSCM < Capistrano::Deploy::SCM::Base
 
   def perform_remote_checkout(context, revision, destination)
     context.execute_on_servers do |servers|
-      operations = servers.map do |server|
-        on_error = lambda { |message| logger.important(message, server) }
-        Checkout.new(sessions[server], repository, destination, on_error).start
+      servers.each do |server|
+        Checkout.new(context.sessions[server], repository, destination, context.logger).start
       end
-      operations.each { |op| op.wait } 
     end
   end
 
@@ -32,31 +30,25 @@ class LocalSCM < Capistrano::Deploy::SCM::Base
   end
 
   class Checkout
-    def initialize(session, repository, destination, on_error)
+    def initialize(session, repository, destination, logger)
       @session, @sftp = session, nil
       @repository, @destination = repository, destination
-      @on_error = on_error
-      @complete = false
+      @logger = logger
     end
 
     def start
-      @session.sftp(false).connect do |sftp|
-        @sftp = sftp
-        perform do
-          @complete = true
-        end
+      @sftp = @session.sftp(false).connect!
+      begin
+        perform
+      ensure
+        @sftp.close_channel
       end
-      self
-    end
-
-    def wait
-      @session.loop { @complete }
     end
     
   private
   
     def archive
-      @archive ||= File.basename(@destination) + '.tgz'
+      @archive ||= "#{File.basename(@repository)}-#{File.basename(@destination)}.tgz"
     end
     
     def local_archive
@@ -68,22 +60,24 @@ class LocalSCM < Capistrano::Deploy::SCM::Base
     end
     
   private
-  
+    
     def perform
       if destination_exist?
-        yield
-      else
-        Dir.chdir(File.dirname(@repository)) do
-          system("tar czf #{local_archive} #{File.basename(@repository)}")
-        end
-
-        @sftp.upload(local_archive, remote_archive) do
-          command = "cd #{File.dirname(@destination)} && tar xzf #{remote_archive} && mv #{File.basename(@repository)} #{File.basename(@destination)}; rm #{remote_archive}"
-          run_asynchronously(command) do
-            yield
-          end
-        end
+        @logger.info "already exists, skipping: #{@destination}"
+        return
       end
+      
+      @logger.debug "creating local archive: #{archive}"
+      Dir.chdir(File.dirname(@repository)) do
+        system("tar czf #{local_archive} #{File.basename(@repository)}")
+      end
+
+      @logger.debug "uploading: #{archive}"
+      @sftp.upload!(local_archive, remote_archive)
+      
+      command = "cd #{File.dirname(@destination)} && tar xzf #{remote_archive} && mv #{File.basename(@repository)} #{File.basename(@destination)}; rm #{remote_archive}"
+      @logger.debug "executing: #{command}"
+      @session.exec!(command)
     end
     
     def destination_exist?
@@ -91,23 +85,6 @@ class LocalSCM < Capistrano::Deploy::SCM::Base
       true
     rescue Net::SFTP::StatusException
       false
-    end
-    
-    # Yields upon command completion.
-    def run_asynchronously(command)
-      @session.open_channel do |channel|
-        channel.exec(command) do |ch, success|
-          unless success
-            @on_error.call("could not open channel")
-            yield
-          else
-            channel.on_request "exit-status" do |ch, data|
-              @on_error.call("command failed: #{command}") unless data.read_long.zero?
-              yield
-            end
-          end
-        end
-      end
     end
   end
 end
