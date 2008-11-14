@@ -30,7 +30,7 @@ It should be just before the line that loads the 'config/deploy' file. If that l
 
 If you are not using this with a Rails application, you'll need to explicitly load recipes/cached_externals.rb in your Capfile.
 
-Next, tell Capistrano about your external dependencies. This is done via a YAML file: config/externals.yml. It describes a hash of path names that describe the external repository. For example:
+Next, tell Capistrano about your external dependencies. This is done via a YAML file: config/externals.yml. It describes a hash of path names that describe the external repository. It is ERB-evaluated before being loaded so you can include ERB tags to loop over long lists of dependencies. For example:
 
   ---
   vendor/rails:
