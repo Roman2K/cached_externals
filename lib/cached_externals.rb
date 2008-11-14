@@ -20,27 +20,27 @@ module CachedExternals
     end
   end
   
-  class LocalSCM < Capistrano::Deploy::SCM::Base
-    def head
-      ""
+  class LocalSCM
+    def initialize(configuration)
+      @repository = configuration[:repository]
     end
-
+    
     def checkout(revision, destination)
-      "ln -nsf #{File.expand_path(repository)} #{destination}"
+      "ln -nsf #{File.expand_path(@repository)} #{destination}"
     end
 
     def perform_remote_checkout(context, revision, destination)
       context.execute_on_servers do |servers|
         servers.each do |server|
-          Checkout.new(context.sessions[server], repository, destination, context.logger).start
+          Checkout.new(context.sessions[server], @repository, destination, context.logger).start
         end
       end
     end
 
     def query_revision(revision)
       define_checksum_func = "if which md5 > /dev/null 2>&1; then SUM=md5; else checksum() { md5sum | awk '{ print $1 }'; }; SUM=checksum; fi"
-      structure_checksum = "find #{repository} | $SUM"
-      content_checksum = "find #{repository} -type f -print0 | xargs -0 cat | $SUM"
+      structure_checksum = "find #{@repository} | $SUM"
+      content_checksum = "find #{@repository} -type f -print0 | xargs -0 cat | $SUM"
       query_command = "#{define_checksum_func}; echo \"$(#{structure_checksum})$(#{content_checksum})\" | $SUM"
       yield(query_command).chomp
     end
