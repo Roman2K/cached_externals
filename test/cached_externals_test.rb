@@ -1,6 +1,45 @@
 require 'test/unit'
+require 'mocha'
+
+require 'cached_externals'
 
 class CachedExternalsTest < Test::Unit::TestCase
+  def test_external_modules
+    # Inexistent config/externals.yml
+    File.stubs(:read).with("config/externals.yml").raises(Errno::ENOENT)
+    assert_equal({}, CachedExternals.external_modules)
+    
+    # String as keys
+    File.stubs(:read).with("config/externals.yml").returns <<-EOS
+      vendor/foo:
+        type: git
+        :revision: deadbeef
+    EOS
+    begin
+      CachedExternals.external_modules
+    rescue ArgumentError => error
+    end
+    assert(error, "did not raise ArgumentError")
+    assert_match(/found \["type"\] under vendor\/foo/, error.message)
+    
+    # Valid
+    File.stubs(:read).with("config/externals.yml").returns <<-EOS
+      vendor/foo:
+        :type: git
+        :revision: deadbeef
+    EOS
+    assert_equal({'vendor/foo' => {:type => 'git', :revision => 'deadbeef'}}, CachedExternals.external_modules)
+    
+    # ERB evaluation
+    File.stubs(:read).with("config/externals.yml").returns("contents")
+    ERB.stubs(:new).with("contents").returns(stub)
+    ERB.new("contents").stubs(:result).with(TOPLEVEL_BINDING).returns("entry:\n  :property: value")
+    
+    assert_equal({'entry' => {:property => 'value'}}, CachedExternals.external_modules)
+  end
+end
+
+class CachedExternals::IntegrationTest < Test::Unit::TestCase
   STORE   = Pathname(__FILE__).dirname.join('store')
   LOCAL   = STORE.join('local')
   REMOTE  = STORE.join('remote')

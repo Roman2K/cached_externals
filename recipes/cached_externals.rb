@@ -14,14 +14,8 @@ require 'cached_externals'
 # contents of the config/externals.yml file. Although you _could_ set the
 # variable yourself (to bypass the need for a config/externals.yml file, for
 # instance), you'll rarely (if ever) want to.
-set(:external_modules) do
-  require 'yaml'
-
-  modules = YAML.load_file("config/externals.yml") rescue {}
-  modules.each do |path, options|
-    strings = options.select { |k, v| String === k }
-    raise ArgumentError, "the externals.yml file must use symbols for the option keys (found #{strings.inspect} under #{path})" if strings.any?
-  end
+set :external_modules do
+  CachedExternals.external_modules
 end
 
 desc "Indicate that externals should be applied locally. See externals:setup."

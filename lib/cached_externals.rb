@@ -7,6 +7,19 @@ Capistrano::Deploy::SCM::Base.class_eval do
 end
 
 module CachedExternals
+  def self.external_modules
+    require 'erb'
+    require 'yaml'
+
+    contents = File.read("config/externals.yml") rescue ""
+    contents = ERB.new(contents).result(TOPLEVEL_BINDING)
+    modules = YAML.load(contents) || {}
+    modules.each do |path, options|
+      strings = options.keys.grep(String)
+      raise ArgumentError, "the externals.yml file must use symbols for the option keys (found #{strings.inspect} under #{path})" if strings.any?
+    end
+  end
+  
   class LocalSCM < Capistrano::Deploy::SCM::Base
     def head
       ""
