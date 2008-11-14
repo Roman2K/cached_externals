@@ -1,5 +1,4 @@
 require 'test/unit'
-require 'mocha'
 
 class CachedExternalsTest < Test::Unit::TestCase
   STORE   = Pathname(__FILE__).dirname.join('store')
