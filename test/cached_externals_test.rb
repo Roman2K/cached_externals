@@ -26,7 +26,7 @@ class CachedExternalsTest < Test::Unit::TestCase
       end
     end
     
-    logger.level = Capistrano::Logger::INFO
+    logger.level = Capistrano::Logger::IMPORTANT
   RUBY
   
   def setup
