@@ -39,8 +39,10 @@ class CachedExternalsTest < Test::Unit::TestCase
   end
 end
 
+require 'pathname'
+
 class CachedExternals::IntegrationTest < Test::Unit::TestCase
-  STORE   = Pathname(__FILE__).dirname.join('store')
+  STORE   = Pathname(__FILE__).expand_path.dirname.join('store')
   LOCAL   = STORE.join('local')
   REMOTE  = STORE.join('remote')
   
@@ -68,10 +70,10 @@ class CachedExternals::IntegrationTest < Test::Unit::TestCase
   RUBY
   
   def setup
-    run!("cd #{STORE.parent} && rm -rf store && tar xf store.tar")
+    run!("cd #{STORE.parent} && rm -rf store && tar xf store.tar")    
+    LOCAL.join('config', 'deploy.rb').open('a') { |f| f << CAPFILE_TAIL }
     @previous_directory = Pathname.pwd
     Dir.chdir(STORE)
-    LOCAL.join('config', 'deploy.rb').open('a') { |f| f << CAPFILE_TAIL }
   end
   
   def teardown
