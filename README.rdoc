@@ -44,6 +44,13 @@ Next, tell Capistrano about your external dependencies. This is done via a YAML 
 
 Specify as many as you like. Although it is best to specify an exact revision, you can also give any revision identifier that capistrano understands (git branches, HEAD, etc.). If you do, though, Capistrano will have to resolve those pseudo-revision identifiers every time, which can slow things down a little.
 
+This recipe introduces a special kind of SCM: _local_. It allows for checking out external dependencies located on your filesystem, which may not be version controlled, or are hosted on a server that is not reachable by your deployment servers. When setting up externals locally, a symlink is created to point to the dependency's directory. They are deployed by uploading a compressed archive of that directory on each server instead of having them download the directory themselves. Note that _local_ dependencies cannot be specified a revision since it would not make sense. Example usage:
+
+  ---
+  vendor/plugins/foo:
+    :type: local
+    :repository: "../foo"
+
 Once you've got your externals.yml in place, you'll need to clear away the cruft. For example, if you were going to put vendor/rails as a cached external dependency, you'd need to first remove vendor/rails from your working copy. After clearing away all of the in-repository copies of your external dependencies, you just tell capistrano to load up the cached copies:
 
   cap local externals:setup
