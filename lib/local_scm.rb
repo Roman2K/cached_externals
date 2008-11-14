@@ -24,9 +24,11 @@ class LocalSCM < Capistrano::Deploy::SCM::Base
   end
 
   def query_revision(revision)
-    structure_checksum = "find #{repository} | md5"
-    content_checksum   = "find #{repository} -type f -print0 | xargs -0 cat | md5"
-    yield("echo \"$(#{structure_checksum})$(#{content_checksum})\" | md5").chomp
+    define_checksum_func = "if which md5 > /dev/null 2>&1; then SUM=md5; else checksum() { md5sum | awk '{ print $1 }'; }; SUM=checksum; fi"
+    structure_checksum = "find #{repository} | $SUM"
+    content_checksum = "find #{repository} -type f -print0 | xargs -0 cat | $SUM"
+    query_command = "#{define_checksum_func}; echo \"$(#{structure_checksum})$(#{content_checksum})\" | $SUM"
+    yield(query_command).chomp
   end
 
   class Checkout
