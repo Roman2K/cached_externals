@@ -11,7 +11,7 @@ $:.unshift(File.dirname(__FILE__) + '/../lib')
 
 # The :external_modules variable is used internally to load and contain the
 # contents of the config/externals.yml file. Although you _could_ set the
-# variable yourself (to bypas the need for a config/externals.yml file, for
+# variable yourself (to bypass the need for a config/externals.yml file, for
 # instance), you'll rarely (if ever) want to.
 set(:external_modules) do
   require 'yaml'
