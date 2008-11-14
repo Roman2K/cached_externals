@@ -1,4 +1,5 @@
 $:.unshift(File.dirname(__FILE__) + '/../lib')
+require 'cached_externals'
 
 # ---------------------------------------------------------------------------
 # This is a recipe definition file for Capistrano. The tasks are documented
@@ -39,11 +40,10 @@ namespace :externals do
   DESC
   task :setup, :except => { :no_release => true } do
     require 'capistrano/recipes/deploy/scm'
-    require 'local_scm'
 
     external_modules.each do |path, options|
       logger.info "configuring #{path}"
-      scm = options[:type].to_s == 'local' ? LocalSCM.new(options) : Capistrano::Deploy::SCM.new(options[:type], options)
+      scm = options[:type].to_s == 'local' ? CachedExternals::LocalSCM.new(options) : Capistrano::Deploy::SCM.new(options[:type], options)
       revision = scm.query_revision(options[:revision]) { |cmd| `#{cmd}` }
 
       if exists?(:stage) && stage == :local
