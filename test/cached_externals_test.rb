@@ -50,7 +50,7 @@ class CachedExternalsTest < Test::Unit::TestCase
   end
   
   def test_remote_externals_setup
-    run!("cd #{LOCAL} && cap deploy:setup deploy")
+    run!("cd #{LOCAL} && cap deploy")
     directory = REMOTE.join('shared', 'externals', 'vendor', 'plugins')
     
     assert !REMOTE.parent.join('shared').exist?
