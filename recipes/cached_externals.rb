@@ -24,6 +24,10 @@ task :local do
 end
 
 namespace :externals do
+  def resolve_scm(options)
+    options[:type].to_s == 'local' ? CachedExternals::LocalSCM.new(options) : Capistrano::Deploy::SCM.new(options[:type], options)
+  end
+  
   desc <<-DESC
     Set up all defined external modules. This will check to see if any of the
     modules need to be checked out (be they new or just updated), and will then
@@ -37,7 +41,7 @@ namespace :externals do
 
     external_modules.each do |path, options|
       logger.info "configuring #{path}"
-      scm = options[:type].to_s == 'local' ? CachedExternals::LocalSCM.new(options) : Capistrano::Deploy::SCM.new(options[:type], options)
+      scm = resolve_scm(options)
       revision = scm.query_revision(options[:revision]) { |cmd| `#{cmd}` }
 
       if exists?(:stage) && stage == :local
@@ -63,6 +67,12 @@ namespace :externals do
     end
   end
 end
+
+# Commands required by the SCM's hosting external modules.
+external_modules.values.
+  map { |options| externals.resolve_scm(options) }.
+  map { |scm| scm.command }.compact.uniq.
+  each { |command| depend :remote, :command, command }
 
 # Need to do this before finalize_update, instead of after update_code,
 # because finalize_update tries to do a touch of all assets, and some
