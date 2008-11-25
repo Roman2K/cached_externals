@@ -25,6 +25,10 @@ module CachedExternals
       @repository = configuration[:repository]
     end
     
+    def command
+      nil
+    end
+    
     def checkout(revision, destination)
       "ln -nsf #{File.expand_path(@repository)} #{destination}"
     end

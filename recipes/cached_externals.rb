@@ -68,10 +68,9 @@ namespace :externals do
   end
 end
 
-# Commands required by the SCM's hosting external modules.
+# Commands required by the SCM's
 external_modules.values.
-  map { |options| externals.resolve_scm(options) }.
-  map { |scm| scm.command }.compact.uniq.
+  map  { |options| externals.resolve_scm(options).command }.compact.uniq.
   each { |command| depend :remote, :command, command }
 
 # Need to do this before finalize_update, instead of after update_code,
