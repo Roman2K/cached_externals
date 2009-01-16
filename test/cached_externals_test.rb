@@ -42,7 +42,7 @@ class CachedExternals::ModulesTest < Test::Unit::TestCase
     prepare_for_fetch do
       File.stubs(:read).with("config/externals.yml").returns("contents")
       ERB.stubs(:new).with("contents").returns(stub)
-      ERB.new("contents").stubs(:result).returns("entry:\n  :property: value")
+      ERB.new("contents").stubs(:result).with(TOPLEVEL_BINDING).returns("entry:\n  :property: value")
     
       assert_equal({'entry' => {:property => 'value'}}, M.all)
     end
@@ -100,7 +100,7 @@ class CachedExternals::IntegrationTest < Test::Unit::TestCase
   end
   
   def test_local_externals_setup
-    run!("cd #{LOCAL} && cap local externals:setup")
+    run!("cd #{LOCAL} && cap local IGNORE_GLOBAL_EXTERNALS_DEF=1 externals:setup")
     directory = LOCAL.parent.join('shared', 'externals', 'vendor', 'plugins')
     
     assert_local_directory_library_checked_out(directory, :symlink)

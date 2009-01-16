@@ -14,16 +14,17 @@ module CachedExternals
     GLOBAL_DEF_PATH = "#{ENV['HOME']}/.cached_externals.yml"
     
     def all
-      modules = data
+      modules = data.dup
       modules.delete(CACHE_DIR_KEY)
       modules.each do |path, options|
         strings = options.keys.grep(String)
         raise ArgumentError, "the externals.yml file must use symbols for the option keys (found #{strings.inspect} under #{path})" if strings.any?
       end
+      return modules
     end
     
     def cache_directory
-      data[CACHE_DIR_KEY] || "../shared/externals"
+      (data[CACHE_DIR_KEY] || "../shared/externals").gsub(/~/, ENV['HOME'])
     end
     
   private
@@ -32,15 +33,16 @@ module CachedExternals
       @data ||= begin
         require 'erb'
         require 'yaml'
-        contents = File.read("config/externals.yml") rescue ""
-        if File.file?(GLOBAL_DEF_PATH)
-          puts "Loading global externals definition from: #{GLOBAL_DEF_PATH}"
-          contents = File.read(GLOBAL_DEF_PATH) + "\n" + contents
-        end
-        app_name = File.basename(Dir.pwd)
-        contents = ERB.new(contents).result(binding)
-        YAML.load(contents) || {}
+        contents = [global_definition_yaml, (File.read("config/externals.yml") rescue "")].compact * "\n"
+        contents = ERB.new(contents).result(TOPLEVEL_BINDING)
+        (YAML.load(contents) || {}).freeze
       end
+    end
+    
+    def global_definition_yaml
+      return if ENV["IGNORE_GLOBAL_EXTERNALS_DEF"] || !File.file?(GLOBAL_DEF_PATH)
+      puts "Loading global externals definition from: #{GLOBAL_DEF_PATH}"
+      File.read(GLOBAL_DEF_PATH)
     end
   end
   
