@@ -3,39 +3,57 @@ require 'mocha'
 
 require 'cached_externals'
 
-class CachedExternalsTest < Test::Unit::TestCase
-  def test_external_modules
+class CachedExternals::ModulesTest < Test::Unit::TestCase
+  M = CachedExternals::Modules
+  
+  def test_all
     # Inexistent config/externals.yml
-    File.stubs(:read).with("config/externals.yml").raises(Errno::ENOENT)
-    assert_equal({}, CachedExternals.external_modules)
+    prepare_for_fetch do
+      File.stubs(:read).with("config/externals.yml").raises(Errno::ENOENT)
+      assert_equal({}, M.all)
+    end
     
     # String as keys
-    File.stubs(:read).with("config/externals.yml").returns <<-EOS
-      vendor/foo:
-        type: git
-        :revision: deadbeef
-    EOS
-    begin
-      CachedExternals.external_modules
-    rescue ArgumentError => error
+    prepare_for_fetch do
+      File.stubs(:read).with("config/externals.yml").returns <<-EOS
+        vendor/foo:
+          type: git
+          :revision: deadbeef
+      EOS
+      begin
+        M.all
+      rescue ArgumentError => error
+      end
+      assert(error, "did not raise ArgumentError")
+      assert_match(/found \["type"\] under vendor\/foo/, error.message)
     end
-    assert(error, "did not raise ArgumentError")
-    assert_match(/found \["type"\] under vendor\/foo/, error.message)
     
     # Valid
-    File.stubs(:read).with("config/externals.yml").returns <<-EOS
-      vendor/foo:
-        :type: git
-        :revision: deadbeef
-    EOS
-    assert_equal({'vendor/foo' => {:type => 'git', :revision => 'deadbeef'}}, CachedExternals.external_modules)
+    prepare_for_fetch do
+      File.stubs(:read).with("config/externals.yml").returns <<-EOS
+        vendor/foo:
+          :type: git
+          :revision: deadbeef
+      EOS
+      assert_equal({'vendor/foo' => {:type => 'git', :revision => 'deadbeef'}}, M.all)
+    end
     
     # ERB evaluation
-    File.stubs(:read).with("config/externals.yml").returns("contents")
-    ERB.stubs(:new).with("contents").returns(stub)
-    ERB.new("contents").stubs(:result).with(TOPLEVEL_BINDING).returns("entry:\n  :property: value")
+    prepare_for_fetch do
+      File.stubs(:read).with("config/externals.yml").returns("contents")
+      ERB.stubs(:new).with("contents").returns(stub)
+      ERB.new("contents").stubs(:result).returns("entry:\n  :property: value")
     
-    assert_equal({'entry' => {:property => 'value'}}, CachedExternals.external_modules)
+      assert_equal({'entry' => {:property => 'value'}}, M.all)
+    end
+  end
+  
+private
+
+  def prepare_for_fetch
+    File.stubs(:file?).with(M::GLOBAL_DEF_PATH).returns false
+    M.instance_eval("@data = nil")
+    yield
   end
 end
 

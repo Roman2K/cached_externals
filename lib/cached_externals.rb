@@ -7,16 +7,40 @@ Capistrano::Deploy::SCM::Base.class_eval do
 end
 
 module CachedExternals
-  def self.external_modules
-    require 'erb'
-    require 'yaml'
-
-    contents = File.read("config/externals.yml") rescue ""
-    contents = ERB.new(contents).result(TOPLEVEL_BINDING)
-    modules = YAML.load(contents) || {}
-    modules.each do |path, options|
-      strings = options.keys.grep(String)
-      raise ArgumentError, "the externals.yml file must use symbols for the option keys (found #{strings.inspect} under #{path})" if strings.any?
+  module Modules
+    extend self
+    
+    CACHE_DIR_KEY   = 'cache_directory'
+    GLOBAL_DEF_PATH = "#{ENV['HOME']}/.cached_externals.yml"
+    
+    def all
+      modules = data
+      modules.delete(CACHE_DIR_KEY)
+      modules.each do |path, options|
+        strings = options.keys.grep(String)
+        raise ArgumentError, "the externals.yml file must use symbols for the option keys (found #{strings.inspect} under #{path})" if strings.any?
+      end
+    end
+    
+    def cache_directory
+      data[CACHE_DIR_KEY] || "../shared/externals"
+    end
+    
+  private
+  
+    def data
+      @data ||= begin
+        require 'erb'
+        require 'yaml'
+        contents = File.read("config/externals.yml") rescue ""
+        if File.file?(GLOBAL_DEF_PATH)
+          puts "Loading global externals definition from: #{GLOBAL_DEF_PATH}"
+          contents = File.read(GLOBAL_DEF_PATH) + "\n" + contents
+        end
+        app_name = File.basename(Dir.pwd)
+        contents = ERB.new(contents).result(binding)
+        YAML.load(contents) || {}
+      end
     end
   end
   

@@ -15,7 +15,7 @@ require 'cached_externals'
 # variable yourself (to bypass the need for a config/externals.yml file, for
 # instance), you'll rarely (if ever) want to.
 set :external_modules do
-  CachedExternals.external_modules
+  CachedExternals::Modules.all
 end
 
 desc "Indicate that externals should be applied locally. See externals:setup."
@@ -46,7 +46,7 @@ namespace :externals do
 
       if exists?(:stage) && stage == :local
         FileUtils.rm_rf(path)
-        shared = File.expand_path(File.join("../shared/externals", path))
+        shared = File.expand_path(File.join(CachedExternals::Modules.cache_directory, path))
         FileUtils.mkdir_p(shared)
         destination = File.join(shared, revision)
         if !File.exists?(destination)
